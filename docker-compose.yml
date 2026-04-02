@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: postgres_auth_db
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: superpassword123
+      POSTGRES_DB: userauthdb
+    ports:
+      - "5433:5432"
+    restart: unless-stopped
