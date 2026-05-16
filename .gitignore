@@ -1,0 +1,6 @@
+# Carpetas de compilación
+bin/
+obj/
+
+# Herramientas locales de .NET
+.dotnet/

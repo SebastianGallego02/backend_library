@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres_db:
     image: postgres:15-alpine
-    container_name: postgres_auth_db
+    container_name: postgres_library_db
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: superpassword123
@@ -11,3 +11,19 @@ services:
     ports:
       - "5433:5432"
     restart: unless-stopped
+
+  dotnet_app:
+    container_name: library_api_dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      - ~/.aspnet/https:/root/.aspnet/https:ro
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres_db;Port=5432;Database=userauthdb;Username=admin;Password=superpassword123
+    depends_on:
+      - postgres_db
