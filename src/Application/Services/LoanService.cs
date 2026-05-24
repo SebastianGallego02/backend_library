@@ -108,4 +108,45 @@ public class LoanService : ILoanService
         loan.IsExtended
     );
 }
+
+public async Task<LoanResponseDto> ReturnLoanAsync(ReturnLoanRequestDto request)
+{
+    // 1. Buscar el préstamo activo junto con su libro
+    var loan = await _context.Loans.FindAsync(request.LoanId);
+    if (loan == null)
+    {
+        throw new ArgumentException("El préstamo especificado no existe.");
+    }
+
+    if (loan.IsReturned)
+    {
+        throw new InvalidOperationException("Este préstamo ya fue devuelto con anterioridad.");
+    }
+
+    // 2. Modificar el estado del préstamo usando el método de dominio
+    loan.MarkAsReturned();
+
+    // 3. Recalcular la disponibilidad del libro
+    var book = await _context.Books.FindAsync(loan.BookId);
+    if (book != null)
+    {
+        // Contamos cuántos préstamos SIGUEN activos para ese libro (restando el que acabamos de devolver)
+        var activeLoansCount = await _context.Loans
+            .CountAsync(l => l.BookId == loan.BookId && !l.IsReturned && l.Id != loan.Id);
+
+        // El dominio evalúa si con este reingreso el libro vuelve a estar disponible
+        book.UpdateAvailability(activeLoansCount);
+    }
+
+    // 4. Persistir los cambios en PostgreSQL
+    await _context.SaveChangesAsync();
+
+    return new LoanResponseDto(
+        loan.Id,
+        loan.BookId,
+        loan.UserId,
+        loan.DueDate.ToString("yyyy-MM-dd"),
+        loan.IsExtended
+    );
+}
 }

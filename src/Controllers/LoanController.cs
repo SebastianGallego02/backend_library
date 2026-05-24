@@ -53,4 +53,26 @@ public class LoansController : ControllerBase
         return StatusCode(500, new { message = "Error al renovar el préstamo", error = ex.Message });
     }
     }
+
+    [HttpPost("return")]
+public async Task<IActionResult> ReturnLoan([FromBody] ReturnLoanRequestDto request)
+{
+    try
+    {
+        var result = await _loanService.ReturnLoanAsync(request);
+        return Ok(new { message = "Libro devuelto con éxito y puesto en disponibilidad.", data = result });
+    }
+    catch (ArgumentException ex)
+    {
+        return NotFound(new { message = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return BadRequest(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new { message = "Error interno al procesar la devolución.", error = ex.Message });
+    }
+}
 }

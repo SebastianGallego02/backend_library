@@ -8,4 +8,5 @@ public interface ILoanService
     Task<LoanResponseDto> CreateLoanAsync(CreateLoanRequestDto request);
     Task ProcessExpiredLoansAsync();
     Task<LoanResponseDto> RenewLoanAsync(int loanId);
+    Task<LoanResponseDto> ReturnLoanAsync(ReturnLoanRequestDto request);
 }
