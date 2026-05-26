@@ -53,4 +53,13 @@ public class Loan
         // Si la fecha actual superó la fecha límite de devolución
         return DateTime.UtcNow > DueDate;
     }
+
+    public bool RequiresSanction()
+{
+    // REGLA CRÍTICA: Si ya se devolvió, NUNCA requiere sanción, sin importar la fecha
+    if (IsReturned) return false;
+
+    // Si no se ha devuelto y ya venció el plazo, se sanciona
+    return DateTime.UtcNow > DueDate;
+}
 }

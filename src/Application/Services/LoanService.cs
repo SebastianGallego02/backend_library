@@ -62,30 +62,28 @@ public class LoanService : ILoanService
         );
     }
 
-    public async Task ProcessExpiredLoansAsync()
-    {
-    // 1. Buscar todos los préstamos que ya vencieron y no han sido devueltos
+public async Task ProcessExpiredLoansAsync()
+{
+    // Filtrado estricto: Solo préstamos que NO se han devuelto Y que ya expiraron
     var expiredLoans = await _context.Loans
         .Where(l => !l.IsReturned && DateTime.UtcNow > l.DueDate)
         .ToListAsync();
 
     foreach (var loan in expiredLoans)
     {
-        // 2. Verificar si el usuario ya tiene una sanción activa para no duplicarla
+        // Verificar si ya tiene una sanción vigente para no duplicarla
         var alreadySanctioned = await _context.Sanctions
             .AnyAsync(s => s.UserId == loan.UserId && DateTime.UtcNow <= s.EndDate);
 
         if (!alreadySanctioned)
         {
-            // 3. Si no está sancionado, le creamos la sanción automática de 2 meses (Regla del flujo)
             var newSanction = new Sanction(loan.UserId);
             _context.Sanctions.Add(newSanction);
         }
     }
 
-    // Guardar todos los cambios en la base de datos de Docker
     await _context.SaveChangesAsync();
-    }
+}
 
     public async Task<LoanResponseDto> RenewLoanAsync(int loanId)
 {
@@ -111,42 +109,37 @@ public class LoanService : ILoanService
 
 public async Task<LoanResponseDto> ReturnLoanAsync(ReturnLoanRequestDto request)
 {
-    // 1. Buscar el préstamo activo junto con su libro
     var loan = await _context.Loans.FindAsync(request.LoanId);
-    if (loan == null)
+    if (loan == null) throw new ArgumentException("El préstamo no existe.");
+    if (loan.IsReturned) throw new InvalidOperationException("Este préstamo ya fue devuelto.");
+
+    // 🔥 NUEVA REGLA: Si está devolviendo el libro pero YA se pasó de la fecha límite
+    if (DateTime.UtcNow > loan.DueDate)
     {
-        throw new ArgumentException("El préstamo especificado no existe.");
+        // Verificar si ya tiene sanción para no duplicar
+        var alreadySanctioned = await _context.Sanctions
+            .AnyAsync(s => s.UserId == loan.UserId && DateTime.UtcNow <= s.EndDate);
+
+        if (!alreadySanctioned)
+        {
+            // Se le aplica la sanción de 2 meses de inmediato por devolución tardía
+            var instantSanction = new Sanction(loan.UserId);
+            _context.Sanctions.Add(instantSanction);
+        }
     }
 
-    if (loan.IsReturned)
-    {
-        throw new InvalidOperationException("Este préstamo ya fue devuelto con anterioridad.");
-    }
-
-    // 2. Modificar el estado del préstamo usando el método de dominio
+    // Continuamos con el flujo normal de entrega
     loan.MarkAsReturned();
 
-    // 3. Recalcular la disponibilidad del libro
     var book = await _context.Books.FindAsync(loan.BookId);
     if (book != null)
     {
-        // Contamos cuántos préstamos SIGUEN activos para ese libro (restando el que acabamos de devolver)
         var activeLoansCount = await _context.Loans
             .CountAsync(l => l.BookId == loan.BookId && !l.IsReturned && l.Id != loan.Id);
-
-        // El dominio evalúa si con este reingreso el libro vuelve a estar disponible
         book.UpdateAvailability(activeLoansCount);
     }
 
-    // 4. Persistir los cambios en PostgreSQL
     await _context.SaveChangesAsync();
-
-    return new LoanResponseDto(
-        loan.Id,
-        loan.BookId,
-        loan.UserId,
-        loan.DueDate.ToString("yyyy-MM-dd"),
-        loan.IsExtended
-    );
+    // ... rest of return
 }
 }
