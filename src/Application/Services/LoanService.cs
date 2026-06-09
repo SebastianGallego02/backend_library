@@ -38,12 +38,17 @@ public class LoanService : ILoanService
         // Contar cuántos préstamos activos tiene ese libro en este momento
         var activeLoansCount = await _context.Loans
             .CountAsync(l => l.BookId == request.BookId && !l.IsReturned);
-
+        // Si existieron registros antiguos con TotalCopies incorrecto, los corregimos antes de evaluar.
+        if (book.TotalCopies <= 0)
+        {
+            Console.WriteLine($"[WARNING] Libro '{book.Title}' (ID: {book.Id}) tenía TotalCopias inválido ({book.TotalCopies}). Se corrige a 1 copia.");
+            book.UpdateStock(1);
+        }
         // Actualizamos el estado del libro basándonos en la base de datos real justo antes de evaluar
         book.UpdateAvailability(activeLoansCount);
-
         if (!book.IsAvailable)
         {
+            Console.WriteLine($"[DEBUG] Intento de préstamo para el libro '{book.Title}' (ID: {book.Id}) que está agotado. TotalCopias: {book.TotalCopies}, ActiveLoans: {activeLoansCount}");
             throw new InvalidOperationException("El libro se encuentra agotado actualmente (no hay más copias disponibles).");
         }
 
@@ -54,92 +59,100 @@ public class LoanService : ILoanService
         await _context.SaveChangesAsync();
 
         return new LoanResponseDto(
-            newLoan.Id, 
-            newLoan.BookId, 
-            newLoan.UserId, 
-            newLoan.DueDate.ToString("yyyy-MM-dd"), 
+            newLoan.Id,
+            newLoan.BookId,
+            newLoan.UserId,
+            newLoan.DueDate.ToString("yyyy-MM-dd"),
             newLoan.IsExtended
         );
     }
 
-public async Task ProcessExpiredLoansAsync()
-{
-    // Filtrado estricto: Solo préstamos que NO se han devuelto Y que ya expiraron
-    var expiredLoans = await _context.Loans
-        .Where(l => !l.IsReturned && DateTime.UtcNow > l.DueDate)
-        .ToListAsync();
-
-    foreach (var loan in expiredLoans)
+    public async Task ProcessExpiredLoansAsync()
     {
-        // Verificar si ya tiene una sanción vigente para no duplicarla
-        var alreadySanctioned = await _context.Sanctions
-            .AnyAsync(s => s.UserId == loan.UserId && DateTime.UtcNow <= s.EndDate);
+        // Filtrado estricto: Solo préstamos que NO se han devuelto Y que ya expiraron
+        var expiredLoans = await _context.Loans
+            .Where(l => !l.IsReturned && DateTime.UtcNow > l.DueDate)
+            .ToListAsync();
 
-        if (!alreadySanctioned)
+        foreach (var loan in expiredLoans)
         {
-            var newSanction = new Sanction(loan.UserId);
-            _context.Sanctions.Add(newSanction);
-        }
-    }
+            // Verificar si ya tiene una sanción vigente para no duplicarla
+            var alreadySanctioned = await _context.Sanctions
+                .AnyAsync(s => s.UserId == loan.UserId && DateTime.UtcNow <= s.EndDate);
 
-    await _context.SaveChangesAsync();
-}
+            if (!alreadySanctioned)
+            {
+                var newSanction = new Sanction(loan.UserId);
+                _context.Sanctions.Add(newSanction);
+            }
+        }
+
+        await _context.SaveChangesAsync();
+    }
 
     public async Task<LoanResponseDto> RenewLoanAsync(int loanId)
-{
-    var loan = await _context.Loans.FindAsync(loanId);
-    if (loan == null)
     {
-        throw new ArgumentException("El préstamo no existe.");
-    }
-
-    // Ejecuta la regla del dominio (valida si ya se extendió o si ya se devolvió)
-    loan.RenewLoan();
-
-    await _context.SaveChangesAsync();
-
-    return new LoanResponseDto(
-        loan.Id,
-        loan.BookId,
-        loan.UserId,
-        loan.DueDate.ToString("yyyy-MM-dd"),
-        loan.IsExtended
-    );
-}
-
-public async Task<LoanResponseDto> ReturnLoanAsync(ReturnLoanRequestDto request)
-{
-    var loan = await _context.Loans.FindAsync(request.LoanId);
-    if (loan == null) throw new ArgumentException("El préstamo no existe.");
-    if (loan.IsReturned) throw new InvalidOperationException("Este préstamo ya fue devuelto.");
-
-    // 🔥 NUEVA REGLA: Si está devolviendo el libro pero YA se pasó de la fecha límite
-    if (DateTime.UtcNow > loan.DueDate)
-    {
-        // Verificar si ya tiene sanción para no duplicar
-        var alreadySanctioned = await _context.Sanctions
-            .AnyAsync(s => s.UserId == loan.UserId && DateTime.UtcNow <= s.EndDate);
-
-        if (!alreadySanctioned)
+        var loan = await _context.Loans.FindAsync(loanId);
+        if (loan == null)
         {
-            // Se le aplica la sanción de 2 meses de inmediato por devolución tardía
-            var instantSanction = new Sanction(loan.UserId);
-            _context.Sanctions.Add(instantSanction);
+            throw new ArgumentException("El préstamo no existe.");
         }
+
+        // Ejecuta la regla del dominio (valida si ya se extendió o si ya se devolvió)
+        loan.RenewLoan();
+
+        await _context.SaveChangesAsync();
+
+        return new LoanResponseDto(
+            loan.Id,
+            loan.BookId,
+            loan.UserId,
+            loan.DueDate.ToString("yyyy-MM-dd"),
+            loan.IsExtended
+        );
     }
 
-    // Continuamos con el flujo normal de entrega
-    loan.MarkAsReturned();
-
-    var book = await _context.Books.FindAsync(loan.BookId);
-    if (book != null)
+    public async Task<LoanResponseDto> ReturnLoanAsync(ReturnLoanRequestDto request)
     {
-        var activeLoansCount = await _context.Loans
-            .CountAsync(l => l.BookId == loan.BookId && !l.IsReturned && l.Id != loan.Id);
-        book.UpdateAvailability(activeLoansCount);
-    }
+        var loan = await _context.Loans.FindAsync(request.LoanId);
+        if (loan == null) throw new ArgumentException("El préstamo no existe.");
+        if (loan.IsReturned) throw new InvalidOperationException("Este préstamo ya fue devuelto.");
 
-    await _context.SaveChangesAsync();
-    // ... rest of return
-}
+        // 🔥 NUEVA REGLA: Si está devolviendo el libro pero YA se pasó de la fecha límite
+        if (DateTime.UtcNow > loan.DueDate)
+        {
+            // Verificar si ya tiene sanción para no duplicar
+            var alreadySanctioned = await _context.Sanctions
+                .AnyAsync(s => s.UserId == loan.UserId && DateTime.UtcNow <= s.EndDate);
+
+            if (!alreadySanctioned)
+            {
+                // Se le aplica la sanción de 2 meses de inmediato por devolución tardía
+                var instantSanction = new Sanction(loan.UserId);
+                _context.Sanctions.Add(instantSanction);
+            }
+        }
+
+        // Continuamos con el flujo normal de entrega
+        loan.MarkAsReturned();
+
+        var book = await _context.Books.FindAsync(loan.BookId);
+        if (book != null)
+        {
+            var activeLoansCount = await _context.Loans
+                .CountAsync(l => l.BookId == loan.BookId && !l.IsReturned && l.Id != loan.Id);
+            book.UpdateAvailability(activeLoansCount);
+        }
+
+        await _context.SaveChangesAsync();
+
+        // ¡AQUÍ ESTÁ EL RETURN QUE FALTABA!
+        return new LoanResponseDto(
+            loan.Id,
+            loan.BookId,
+            loan.UserId,
+            loan.DueDate.ToString("yyyy-MM-dd"),
+            loan.IsExtended
+        );
+    }
 }

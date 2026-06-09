@@ -10,7 +10,8 @@ namespace backend_library.Presentation.Controllers;
 [Route("api/[controller]")]
 public class LoansController : ControllerBase
 {
-    private readonly LoanService _loanService;
+    // ✅ Como debe quedar (con la "I")
+    private readonly ILoanService _loanService;
 
     public LoansController(ILoanService loanService)
     {
@@ -39,40 +40,40 @@ public class LoansController : ControllerBase
     [HttpPut("{id}/renew")]
     public async Task<IActionResult> RenewLoan(int id)
     {
-    try
-    {
-        var result = await _loanService.RenewLoanAsync(id);
-        return Ok(result);
-    }
-    catch (InvalidOperationException ex)
-    {
-        return BadRequest(new { message = ex.Message });
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, new { message = "Error al renovar el préstamo", error = ex.Message });
-    }
+        try
+        {
+            var result = await _loanService.RenewLoanAsync(id);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Error al renovar el préstamo", error = ex.Message });
+        }
     }
 
     [HttpPost("return")]
-public async Task<IActionResult> ReturnLoan([FromBody] ReturnLoanRequestDto request)
-{
-    try
+    public async Task<IActionResult> ReturnLoan([FromBody] ReturnLoanRequestDto request)
     {
-        var result = await _loanService.ReturnLoanAsync(request);
-        return Ok(new { message = "Libro devuelto con éxito y puesto en disponibilidad.", data = result });
+        try
+        {
+            var result = await _loanService.ReturnLoanAsync(request);
+            return Ok(new { message = "Libro devuelto con éxito y puesto en disponibilidad.", data = result });
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Error interno al procesar la devolución.", error = ex.Message });
+        }
     }
-    catch (ArgumentException ex)
-    {
-        return NotFound(new { message = ex.Message });
-    }
-    catch (InvalidOperationException ex)
-    {
-        return BadRequest(new { message = ex.Message });
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, new { message = "Error interno al procesar la devolución.", error = ex.Message });
-    }
-}
 }

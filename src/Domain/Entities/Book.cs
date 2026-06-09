@@ -12,7 +12,7 @@ public class Book
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
     // 📁 Nuevas propiedades para el control de inventario
-    public int TotalCopies { get; private set; } // Copias totales que posee la biblioteca
+    public int TotalCopies { get; private set; } = 1; // Copias totales que posee la biblioteca
     public bool IsAvailable { get; private set; } = true; // Flag de disponibilidad (Agotado/Disponible)
 
     // Constructor requerido por Entity Framework

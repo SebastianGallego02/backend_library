@@ -6,7 +6,7 @@ public class Loan
 {
     public int Id { get; private set; }
     public int BookId { get; private set; }
-    public int UserId { get; private set; } // Relación con el Estudiante/Usuario
+    public Guid UserId { get; private set; } // Relación con el Estudiante/Usuario
     public DateTime LoanDate { get; private set; }
     public DateTime DueDate { get; private set; }
     public bool IsExtended { get; private set; }
@@ -16,7 +16,7 @@ public class Loan
     private Loan() { }
 
     // Constructor de Negocio
-    public Loan(int bookId, int userId)
+    public Loan(int bookId, Guid userId)
     {
         BookId = bookId;
         UserId = userId;
@@ -47,19 +47,10 @@ public class Loan
     // Regla de Negocio: Verificar si el préstamo está vencido y requiere aplicar sanción
     public bool RequiresSanction()
     {
-        // Si ya se devolvió, no hay por qué sancionar
+        // REGLA CRÍTICA: Si ya se devolvió, NUNCA requiere sanción, sin importar la fecha
         if (IsReturned) return false;
 
-        // Si la fecha actual superó la fecha límite de devolución
+        // Si no se ha devuelto y ya venció el plazo, se sanciona
         return DateTime.UtcNow > DueDate;
     }
-
-    public bool RequiresSanction()
-{
-    // REGLA CRÍTICA: Si ya se devolvió, NUNCA requiere sanción, sin importar la fecha
-    if (IsReturned) return false;
-
-    // Si no se ha devuelto y ya venció el plazo, se sanciona
-    return DateTime.UtcNow > DueDate;
-}
 }

@@ -1,7 +1,9 @@
 namespace backend_library.Application.DTOs;
 
-public record CreateLoanRequestDto(int BookId, int UserId);
+// 1. Cambiamos int por Guid en el UserId
+public record CreateLoanRequestDto(int BookId, Guid UserId);
 
-public record LoanResponseDto(int Id, int BookId, int UserId, string DueDate, bool IsExtended);
+// 2. Lo mismo para la respuesta si lo necesitas
+public record LoanResponseDto(int Id, int BookId, Guid UserId, string DueDate, bool IsExtended);
 
 public record ReturnLoanRequestDto(int LoanId);
