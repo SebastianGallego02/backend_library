@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using backend_library.Application.DTOs;
@@ -15,6 +16,28 @@ public class LoanService : ILoanService
     public LoanService(AppDbContext context)
     {
         _context = context;
+    }
+
+    public async Task<IEnumerable<LoanResponseDto>> GetLoansAsync(Guid? userId = null)
+    {
+        var loansQuery = _context.Loans.AsQueryable();
+
+        if (userId.HasValue)
+        {
+            loansQuery = loansQuery.Where(l => l.UserId == userId.Value);
+        }
+
+        var loans = await loansQuery.ToListAsync();
+
+        return loans.Select(loan => new LoanResponseDto(
+            loan.Id,
+            loan.BookId,
+            loan.UserId,
+            loan.DueDate.ToString("yyyy-MM-dd"),
+            loan.ReturnDate?.ToString("yyyy-MM-dd"),
+            loan.IsExtended,
+            loan.IsReturned
+        ));
     }
 
     public async Task<LoanResponseDto> CreateLoanAsync(CreateLoanRequestDto request)
@@ -63,7 +86,9 @@ public class LoanService : ILoanService
             newLoan.BookId,
             newLoan.UserId,
             newLoan.DueDate.ToString("yyyy-MM-dd"),
-            newLoan.IsExtended
+            newLoan.ReturnDate?.ToString("yyyy-MM-dd"),
+            newLoan.IsExtended,
+            newLoan.IsReturned
         );
     }
 
@@ -108,7 +133,9 @@ public class LoanService : ILoanService
             loan.BookId,
             loan.UserId,
             loan.DueDate.ToString("yyyy-MM-dd"),
-            loan.IsExtended
+            loan.ReturnDate?.ToString("yyyy-MM-dd"),
+            loan.IsExtended,
+            loan.IsReturned
         );
     }
 
@@ -118,7 +145,7 @@ public class LoanService : ILoanService
         if (loan == null) throw new ArgumentException("El préstamo no existe.");
         if (loan.IsReturned) throw new InvalidOperationException("Este préstamo ya fue devuelto.");
 
-        // 🔥 NUEVA REGLA: Si está devolviendo el libro pero YA se pasó de la fecha límite
+        // Si está devolviendo el libro pero YA se pasó de la fecha límite
         if (DateTime.UtcNow > loan.DueDate)
         {
             // Verificar si ya tiene sanción para no duplicar
@@ -152,7 +179,9 @@ public class LoanService : ILoanService
             loan.BookId,
             loan.UserId,
             loan.DueDate.ToString("yyyy-MM-dd"),
-            loan.IsExtended
+            loan.ReturnDate?.ToString("yyyy-MM-dd"),
+            loan.IsExtended,
+            loan.IsReturned
         );
     }
 }

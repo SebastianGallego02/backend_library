@@ -37,7 +37,7 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
-        var user = await _userRepository.GetByUsernameOrEmailAsync(request.UsernameOrEmail);
+        var user = await _userRepository.GetByUsernameOrEmailAsync(request.Email);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             throw new InvalidOperationException("Credenciales inválidas.");

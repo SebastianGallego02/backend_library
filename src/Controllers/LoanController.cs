@@ -1,13 +1,16 @@
 using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using backend_library.Application.DTOs;
 using backend_library.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend_library.Presentation.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize] // 🔒 Requiere autenticación para cualquier acción de préstamos
 public class LoansController : ControllerBase
 {
     // ✅ Como debe quedar (con la "I")
@@ -52,6 +55,30 @@ public class LoansController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Error al renovar el préstamo", error = ex.Message });
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetLoans([FromQuery] Guid? userId = null)
+    {
+        try
+        {
+            // 🛡️ Regla de seguridad: Si no es Admin, forzamos el filtrado por su propio ID
+            if (!User.IsInRole("Admin"))
+            {
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (string.IsNullOrEmpty(currentUserId))
+                    return Unauthorized(new { message = "No se pudo identificar al usuario del token." });
+
+                userId = Guid.Parse(currentUserId);
+            }
+
+            var loans = await _loanService.GetLoansAsync(userId);
+            return Ok(loans);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Error al obtener los préstamos", error = ex.Message });
         }
     }
 

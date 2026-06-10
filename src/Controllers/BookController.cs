@@ -7,7 +7,6 @@ namespace backend_library.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize] // 🔒 Bloquea todo el controlador. Requiere cualquier usuario autenticado de base.
 public class BookController : ControllerBase
 {
     private readonly IBookService _bookService;
@@ -17,14 +16,14 @@ public class BookController : ControllerBase
         _bookService = bookService;
     }
 
-    [HttpGet] // 🔓 Accesible por cualquier rol autenticado
+    [HttpGet] // 🔓 Accesible por cualquier usuario (público)
     public async Task<IActionResult> GetAll()
     {
         var books = await _bookService.GetAllBooksAsync();
         return Ok(books);
     }
 
-    [HttpGet("{id}")] // 🔓 Accesible por cualquier rol autenticado
+    [HttpGet("{id}")] // 🔓 Accesible por cualquier usuario (público)
     public async Task<IActionResult> GetById(int id)
     {
         var book = await _bookService.GetBookByIdAsync(id);

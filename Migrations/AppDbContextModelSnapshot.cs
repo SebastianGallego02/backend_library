@@ -81,6 +81,9 @@ namespace backend_library.Migrations
                     b.Property<DateTime>("LoanDate")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("ReturnDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
@@ -99,6 +102,9 @@ namespace backend_library.Migrations
 
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp with time zone");

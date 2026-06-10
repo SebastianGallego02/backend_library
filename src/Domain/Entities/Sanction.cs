@@ -8,6 +8,7 @@ public class Sanction
     public Guid UserId { get; private set; }
     public DateTime StartDate { get; private set; }
     public DateTime EndDate { get; private set; }
+    public bool IsActive { get; private set; }
 
     private Sanction() { }
 
@@ -15,9 +16,11 @@ public class Sanction
     {
         UserId = userId;
         StartDate = DateTime.UtcNow;
-        EndDate = DateTime.UtcNow.AddMonths(2); 
+        EndDate = DateTime.UtcNow.AddMonths(2);
+        IsActive = true;
     }
 
-    // Propiedad para validar si la sanción sigue vigente hoy
-    public bool IsActive => DateTime.UtcNow >= StartDate && DateTime.UtcNow <= EndDate;
+    // Métodos para modificar el estado (DDD/Encapsulamiento)
+    public void Deactivate() => IsActive = false;
+    public void Extend(int months) => EndDate = EndDate.AddMonths(months);
 }

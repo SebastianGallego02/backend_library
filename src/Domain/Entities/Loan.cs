@@ -9,6 +9,7 @@ public class Loan
     public Guid UserId { get; private set; } // Relación con el Estudiante/Usuario
     public DateTime LoanDate { get; private set; }
     public DateTime DueDate { get; private set; }
+    public DateTime? ReturnDate { get; private set; }
     public bool IsExtended { get; private set; }
     public bool IsReturned { get; private set; }
 
@@ -42,6 +43,7 @@ public class Loan
     public void MarkAsReturned()
     {
         IsReturned = true;
+        ReturnDate = DateTime.UtcNow;
     }
 
     // Regla de Negocio: Verificar si el préstamo está vencido y requiere aplicar sanción
