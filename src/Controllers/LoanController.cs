@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using backend_library.Application.DTOs;
 using backend_library.Application.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Microsoft.AspNetCore.Mvc;
 
 namespace backend_library.Presentation.Controllers;
@@ -33,6 +35,11 @@ public class LoansController : ControllerBase
         {
             // Captura los errores de reglas de negocio (libro agotado o estudiante sancionado)
             return BadRequest(new { message = ex.Message });
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException pgEx && pgEx.SqlState == "P0001")
+        {
+            // P0001 es el código de PostgreSQL para 'raise_exception'
+            return BadRequest(new { message = pgEx.MessageText });
         }
         catch (Exception ex)
         {

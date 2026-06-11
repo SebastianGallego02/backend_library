@@ -7,7 +7,8 @@ public record BookCreateUpdateDto(
     string Author,
     string? Description,
     int PublishedYear,
-    [Range(1, int.MaxValue, ErrorMessage = "El número de copias debe ser mayor a cero.")] int TotalCopies
+    [Range(1, int.MaxValue, ErrorMessage = "El número de copias debe ser mayor a cero.")] int TotalCopies,
+    string? ImageUrl
 );
 
 public record BookResponseDto(
@@ -16,5 +17,6 @@ public record BookResponseDto(
     string Author,
     string? Description,
     int PublishedYear,
-    int TotalCopies
+    int TotalCopies,
+    string? ImageUrl
 );

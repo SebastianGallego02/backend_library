@@ -16,14 +16,14 @@ public class BookService : IBookService
     public async Task<IEnumerable<BookResponseDto>> GetAllBooksAsync()
     {
         var books = await _bookRepository.GetAllAsync();
-        return books.Select(b => new BookResponseDto(b.Id, b.Title, b.Author, b.Description, b.PublishedYear, b.TotalCopies));
+        return books.Select(b => new BookResponseDto(b.Id, b.Title, b.Author, b.Description, b.PublishedYear, b.TotalCopies, b.ImageUrl));
     }
 
     public async Task<BookResponseDto?> GetBookByIdAsync(int id)
     {
         var book = await _bookRepository.GetByIdAsync(id);
         if (book == null) return null;
-        return new BookResponseDto(book.Id, book.Title, book.Author, book.Description, book.PublishedYear, book.TotalCopies);
+        return new BookResponseDto(book.Id, book.Title, book.Author, book.Description, book.PublishedYear, book.TotalCopies, book.ImageUrl);
     }
 
     public async Task<BookResponseDto> CreateBookAsync(BookCreateUpdateDto dto)
@@ -33,11 +33,11 @@ public class BookService : IBookService
             throw new ArgumentException("El número de copias debe ser mayor a cero.");
         }
 
-        var book = new Book { Title = dto.Title, Author = dto.Author, Description = dto.Description, PublishedYear = dto.PublishedYear };
+        var book = new Book { Title = dto.Title, Author = dto.Author, Description = dto.Description, PublishedYear = dto.PublishedYear, ImageUrl = dto.ImageUrl };
         book.UpdateStock(dto.TotalCopies);
         await _bookRepository.AddAsync(book);
         await _bookRepository.SaveChangesAsync();
-        return new BookResponseDto(book.Id, book.Title, book.Author, book.Description, book.PublishedYear, book.TotalCopies);
+        return new BookResponseDto(book.Id, book.Title, book.Author, book.Description, book.PublishedYear, book.TotalCopies, book.ImageUrl);
     }
 
     public async Task<bool> UpdateBookAsync(int id, BookCreateUpdateDto dto)
@@ -54,6 +54,7 @@ public class BookService : IBookService
         book.Author = dto.Author;
         book.Description = dto.Description;
         book.PublishedYear = dto.PublishedYear;
+        book.ImageUrl = dto.ImageUrl;
         book.UpdateStock(dto.TotalCopies);
 
         _bookRepository.Update(book);

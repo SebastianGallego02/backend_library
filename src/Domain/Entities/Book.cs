@@ -9,6 +9,7 @@ public class Book
     public required string Author { get; set; }
     public string? Description { get; set; }
     public int PublishedYear { get; set; }
+    public string? ImageUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
     // 📁 Nuevas propiedades para el control de inventario
